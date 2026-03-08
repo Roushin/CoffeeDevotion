@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Devotional | Personal Sanctuary</title>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #fcfaf8;
+            --text-color: #2d3436;
+            --accent-color: #6c5ce7;
+            --card-bg: #ffffff;
+            --border-color: #e0e0e0;
+            --success-color: #00b894;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 650px;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-top: 20px;
+        }
+
+        .date-badge {
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.8rem;
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        h1 {
+            font-family: 'Merriweather', serif;
+            font-size: 2.2rem;
+            margin: 10px 0;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            position: relative;
+        }
+
+        .verse-text {
+            font-family: 'Merriweather', serif;
+            font-style: italic;
+            font-size: 1.2rem;
+            color: #444;
+            border-left: 4px solid var(--accent-color);
+            padding-left: 20px;
+            margin: 20px 0;
+        }
+
+        .section-title {
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        textarea {
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 120px;
+            box-sizing: border-box;
+            background: #fafafa;
+            transition: border 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            background: #fff;
+        }
+
+        .status-indicator {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--success-color);
+            text-align: right;
+            height: 20px;
+            margin-top: 5px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 0.8rem;
+            color: #aaa;
+            padding-bottom: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div class="date-badge" id="current-date"></div>
+            <h1>Daily Bread</h1>
+        </header>
+
+        <div class="card">
+            <span class="section-title">Focus Scripture</span>
+            <div class="verse-text" id="verse">
+                "Be still, and know that I am God..."
+            </div>
+            <p style="text-align: right; font-weight: 500; font-size: 0.9rem;" id="reference">— Psalm 46:10</p>
+        </div>
+
+        <div class="card">
+            <span class="section-title">Reflections</span>
+            <textarea id="reflection" placeholder="What is God teaching you today?"></textarea>
+            
+            <span class="section-title" style="margin-top: 25px;">Prayer Journal</span>
+            <textarea id="prayer" placeholder="Praises and petitions..."></textarea>
+            
+            <div class="status-indicator" id="sync-status"></div>
+        </div>
+
+        <footer>
+            Synced to your Google Spreadsheet
+        </footer>
+    </div>
+
+    <script>
+        // 1. CONFIGURATION: Paste your Web App URL here
+        const SCRIPT_URL = 'PASTE_YOUR_GOOGLE_WEB_APP_URL_HERE';
+
+        // 2. Display the current date
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('current-date').textContent = new Date().toLocaleDateString(undefined, dateOptions);
+
+        // 3. Save Function
+        async function saveData() {
+            const reflection = document.getElementById('reflection').value;
+            const prayer = document.getElementById('prayer').value;
+            const statusLabel = document.getElementById('sync-status');
+
+            // Don't sync if both fields are empty
+            if (!reflection.trim() && !prayer.trim()) return;
+
+            statusLabel.innerText = "Syncing to Cloud...";
+            statusLabel.style.color = "#6c5ce7";
+
+            try {
+                // We use 'no-cors' mode for Google Apps Script simple triggers
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        reflection: reflection,
+                        prayer: prayer,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+
+                statusLabel.innerText = "Saved to Google Sheet ✅";
+                statusLabel.style.color = "#00b894";
+                
+                // Clear status after 3 seconds
+                setTimeout(() => { statusLabel.innerText = ""; }, 3000);
+            } catch (err) {
+                console.error('Sync Error:', err);
+                statusLabel.innerText = "Sync Error ❌";
+                statusLabel.style.color = "#ff7675";
+            }
+        }
+
+        // 4. Debounce logic: Wait 2 seconds after user stops typing before saving
+        let timeout = null;
+        const inputs = [document.getElementById('reflection'), document.getElementById('prayer')];
+
+        inputs.forEach(input => {
+            input.addEventListener('input', () => {
+                clearTimeout(timeout);
+                timeout = setTimeout(saveData, 2000);
+            });
+        });
+    </script>
+</body>
+</html>
